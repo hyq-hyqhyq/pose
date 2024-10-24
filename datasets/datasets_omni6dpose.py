@@ -272,11 +272,11 @@ class Omni6DPoseDataSet(data.Dataset):
         valid = (np.squeeze(roi_depth, axis=0) > 0) * roi_mask_def > 0
         xs, ys = np.argwhere(valid).transpose(1, 0)
         valid = valid.reshape(-1)
-        pcl_in = self._depth_to_pcl(roi_depth, mat_K, roi_coord_2d, valid)
+        pcl_in = self.depth_to_pcl(roi_depth, mat_K, roi_coord_2d, valid)
         # np.savetxt('pts_def.txt', pcl_in)
         if len(pcl_in) < 50:
             return self.__getitem__((index + 1) % self.__len__())
-        ids, pcl_in = self._sample_points(pcl_in, self.n_pts)
+        ids, pcl_in = self.sample_points(pcl_in, self.n_pts)
         xs, ys = xs[ids], ys[ids]
         
         # sym
@@ -349,7 +349,8 @@ class Omni6DPoseDataSet(data.Dataset):
 
         return data_dict
 
-    def _sample_points(self, pcl, n_pts):
+    @staticmethod
+    def sample_points(pcl, n_pts):
         """ Down sample the point cloud.
         TODO: use farthest point sampling
 
@@ -366,7 +367,8 @@ class Omni6DPoseDataSet(data.Dataset):
             pcl = pcl[ids]
         return ids, pcl
     
-    def _depth_to_pcl(self, depth, K, xymap, valid):
+    @staticmethod
+    def depth_to_pcl(depth, K, xymap, valid):
         K = K.reshape(-1)
         cx, cy, fx, fy = K[2], K[5], K[0], K[4]
         depth = depth.reshape(-1).astype(np.float32)[valid]
@@ -377,6 +379,7 @@ class Omni6DPoseDataSet(data.Dataset):
         pcl = np.stack((real_x, real_y, depth), axis=-1)
         return pcl.astype(np.float32)
 
+    @staticmethod
     def rgb_transform(rgb):
         rgb_ = np.transpose(rgb, (2, 0, 1)) / 255
         _mean = (0.485, 0.456, 0.406)

@@ -71,7 +71,7 @@ def inference_score(save_path):
         return
 
     cfg.agent_type = 'score'
-    score_agent = PoseNet(cfg)
+    score_agent:PoseNet = PoseNet(cfg)
     score_agent.load_ckpt(model_dir=cfg.pretrained_score_model_path, model_path=True, load_model_only=True)
     score_agent.eval()
 

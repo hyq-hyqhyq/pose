@@ -127,9 +127,7 @@ bash scripts/train_energy.sh
 bash scripts/train_scale.sh
 ```
 
-  
-
-## 🎯 Evaluation
+## 🎯 Inference and evaluation
 
 Set the parameter `--data_path` in `scripts/eval_single.sh` to your own path of ROPE dataset.
 
@@ -143,6 +141,11 @@ bash scripts/eval_single.sh
 
 ``` bash
 bash scripts/eval_tracking.sh
+```
+
+- ### Single video inference and visualization
+``` bash
+python runners/infer.py
 ```
 
 ## 🔖 Citation
