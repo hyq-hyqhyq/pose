@@ -148,6 +148,20 @@ bash scripts/eval_tracking.sh
 python runners/infer.py
 ```
 
+- ### Camera stream inference
+
+First you have to download [this](https://github.com/Gy920/segment-anything-2-real-time) but you don't need to install it, and download its checkpoint of sam2.1_hiera_small.pt. 
+
+```bash
+pip install -r requirements_camera.txt
+```
+
+Fill the PARAMETERS part in runners/infer_camera.py
+
+``` bash
+python runners/infer_camera.py
+```
+
 ## 🔖 Citation
 
 If you find our work useful in your research, please consider citing:
