@@ -22,7 +22,7 @@ The official implementation of GenPose++, as presented in [Omni6DPose](https://j
 - [x] Release the Omni6DPose dataset. 
 - [x] Release the Omni6DPose API.
 - [x] Release the GenPose++ and pretrained models.
-- [ ] Release a convenient version of GenPose++ with SAM for the downstream tasks.
+- [x] Release a convenient version of GenPose++ with SAM for the downstream tasks.
 
 
 ## ⚙️ Requirements
