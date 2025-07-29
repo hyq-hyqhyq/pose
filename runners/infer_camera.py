@@ -307,7 +307,7 @@ def main():
     ENERGY_MODEL_PATH='results/ckpts/EnergyNet/energynet.pth'  # Path to the energy model
     SCALE_MODEL_PATH='results/ckpts/ScaleNet/scalenet.pth'     # Path to the scale model
     PREV_POSE = None                                           # Previous pose
-    SAM2_PATH = '/home/ubuntu/fengwu/segment-anything-2-real-time/checkpoints/sam2.1_hiera_tiny.pt'  # Path to the sam2 model checkpoint you have downloaded
+    SAM2_PATH = './segment-anything-2-real-time/checkpoints/sam2.1_hiera_tiny.pt'  # Path to the sam2 model checkpoint you have downloaded
     ######################################## PARAMETERS ########################################
 
     ''' load data '''
