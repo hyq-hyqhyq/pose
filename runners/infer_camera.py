@@ -373,9 +373,7 @@ def main():
 
     else:
         color_images = sorted(glob.glob(DATA_PATH + '/*_color.png'))
-
-        save_path = "infered_images"
-        os.makedirs(save_path, exist_ok=True)
+        os.makedirs(SAVE_IMG_PATH, exist_ok=True)
 
         for index, color_image in enumerate(tqdm(color_images)):
             cur_cnt = index

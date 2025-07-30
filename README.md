@@ -158,11 +158,40 @@ pip install -r requirements_camera.txt
 
 Fill the PARAMETERS part in runners/infer_camera.py
 
-In the PARAMETERS part, you can turn the USE_CAM to change using camera flow or video, choose whether to save the camera flow or the infered video.
+In the PARAMETERS part, you can turn the USE_CAM to change using camera flow or video, choose whether to save the camera flow or the infered video. 
+
+If you want to infer the video, you have to provide a folder at least as the following format.(DATA_PATH is the video you provide). The color image file ends with '_color.png', depth image file end with '_depth.exr', mask image file ends woth '_mask.exr', and a meta file storing the intrinsics of camera ends with '_meta.json' as the follow format.
+
+``` bash
+DATA_PATH
+├── 0000_color.png
+├── 0000_depth.exr
+├── 0000_mask.exr
+├── 0000_meta.json
+├── 0001_color.png
+├── 0001_depth.exr
+├── 0001_mask.exr
+├── 0001_meta.json
+└── ...
+
+_meta.json
+  {
+    "camera": {
+      "intrinsics": {
+        "fx": 910.8401489257812,
+        "fy": 909.480712890625,
+        "cx": 626.82568359375,
+        "cy": 348.2036437988281,
+        "width": 1280,
+        "height": 720
+      }
+    }
+  }
+```
 
 The TRACKING parameter is used to determine whether use tracking, which means use the pose in last frame as the initial pose. The TRACKING_T0 parameter is to choose the tracking level. there are also some to choose the path of saving.
 
-For more details, please see the comments in runners/infer_camera.py
+For more details, please see the comments in runners/infer_camera.py at the PARAMETERS part.
 
 ``` bash
 python runners/infer_camera.py
