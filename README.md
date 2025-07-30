@@ -150,13 +150,19 @@ python runners/infer.py
 
 - ### Camera stream inference
 
-First you have to download [this](https://github.com/Gy920/segment-anything-2-real-time) but you don't need to install it, and download its checkpoint of sam2.1_hiera_small.pt. 
+First you have to download [this](https://github.com/Gy920/segment-anything-2-real-time) but you don't need to install it, and follow its instruction download its checkpoint of sam2.1_hiera_small.pt. 
 
 ```bash
 pip install -r requirements_camera.txt
 ```
 
 Fill the PARAMETERS part in runners/infer_camera.py
+
+In the PARAMETERS part, you can turn the USE_CAM to change using camera flow or video, choose whether to save the camera flow or the infered video.
+
+The TRACKING parameter is used to determine whether use tracking, which means use the pose in last frame as the initial pose. The TRACKING_T0 parameter is to choose the tracking level. there are also some to choose the path of saving.
+
+For more details, please see the comments in runners/infer_camera.py
 
 ``` bash
 python runners/infer_camera.py
