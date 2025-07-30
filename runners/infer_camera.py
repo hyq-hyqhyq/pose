@@ -216,7 +216,7 @@ class GenPose2:
     def inference(self, data:InferDataset, prev_pose=None, tracking=False, tracking_T0=0.15):
         prev_pose_genpose2 = None
         if prev_pose is not None:
-            print("yes")
+            # print("yes")
             prev_pose_genpose2 = []
             for item in prev_pose:
                 pose_genpose2 = torch.zeros(item.shape[0], get_pose_dim(self.cfg.pose_mode), device=self.cfg.device)
@@ -285,11 +285,12 @@ def main():
     # if use camera, when you have chosen the target object to track press 'q' to start tracking
     # if you want to stop the tracking, press 'c' to stop it
 
+    DATA_PATH = './saved_images'                              # Path to the images_data(only use it when USE_CAM is False)
+
     CAM_SERIAL_NUM = "251622062545"                                        # Camera number, default is D415 of our camera, you can't use it directly.
 
     SAVE_CAM = True                                          # Save camera images or not(only use it when USE_CAM is True)
     SAVE_CAM_PATH = './saved_cam_images'                      # Path to save camera images(only use it when SAVE_CAM is True)
-    DATA_PATH = './saved_images'                              # Path to the images_data(only use it when USE_CAM is False)
 
     SAVE_INFERED = True                                       # Save the infered images or not
     SAVE_IMG_PATH = './infered_images'                        # Path to save the infered images(only use it when SAVE_INFERED is True)
