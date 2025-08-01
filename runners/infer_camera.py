@@ -241,15 +241,13 @@ def create_genpose2(score_model_path:str, energy_model_path:str, scale_model_pat
     return GenPose2(score_model_path, energy_model_path, scale_model_path)
 
 def visualize_pose(data:InferDataset, all_final_pose, all_final_length, visualize_pts=False, visualize_image=False):
-    color_img = cv2.cvtColor(data.color, cv2.COLOR_RGB2BGR)
+    # color_img = cv2.cvtColor(data.color, cv2.COLOR_RGB2BGR)
+    color_img = data.color.copy()
     all_final_pose = all_final_pose[0].cpu().numpy()
     all_final_length = all_final_length[0].cpu().numpy()
     objects = data.get_objects()
 
     for index, (obj_pose, obj_length) in enumerate(zip(all_final_pose, all_final_length)):
-        # print(index)
-        if objects['idx'].cpu().numpy()[index] == 255:
-            continue
         if visualize_pts:
             pts = objects['pts'].cpu().numpy()[index]
             pcd = o3d.geometry.PointCloud()
@@ -284,17 +282,20 @@ def main():
     USE_CAM = True                                            # Use camera or not,
     # if use camera, when you have chosen the target object to track press 'q' to start tracking
     # if you want to stop the tracking, press 'c' to stop it
+    # PRO = True                                                # Use two process to be faster or not
 
-    DATA_PATH = './saved_images'                              # Path to the images_data(only use it when USE_CAM is False)
+    CNT = 5                                                     # save numbers
+
+    DATA_PATH = f'./example/{CNT:04d}/saved_cam_images'                              # Path to the images_data(only use it when USE_CAM is False)
 
     CAM_SERIAL_NUM = "251622062545"                                        # Camera number, default is D415 of our camera, you can't use it directly.
 
     SAVE_CAM = True                                          # Save camera images or not(only use it when USE_CAM is True)
-    SAVE_CAM_PATH = './saved_cam_images'                      # Path to save camera images(only use it when SAVE_CAM is True)
+    SAVE_CAM_PATH = f'./example/{CNT:04d}/saved_cam_images'                      # Path to save camera images(only use it when SAVE_CAM is True)
 
     SAVE_INFERED = True                                       # Save the infered images or not
-    SAVE_IMG_PATH = './infered_images'                        # Path to save the infered images(only use it when SAVE_INFERED is True)
-    SAVE_VD_PATH = './infered_videos'                         # Path to save the infered videos(only use it when SAVE_INFERED is True)
+    SAVE_IMG_PATH = f'./example/{CNT:04d}/infered_images'                        # Path to save the infered images(only use it when SAVE_INFERED is True)
+    SAVE_VD_PATH = f'./example/{CNT:04d}/infered_videos'                         # Path to save the infered videos(only use it when SAVE_INFERED is True)
 
 
     TRACKING = True                                           # Tracking mode
@@ -302,12 +303,11 @@ def main():
     # Tracking parameter, if the relative pose between the current frame and the previous frame
     # is large, such as low video FPS or fast object motion, you can set a larger value. The default
     # TRACKING_TO is set to 0.15.
-    TRACKING_T0 = 0.5
+    TRACKING_T0 = 0.3
 
     SCORE_MODEL_PATH='results/ckpts/ScoreNet/scorenet.pth'     # Path to the score model, default is the given trained checkpoint, needed to download
     ENERGY_MODEL_PATH='results/ckpts/EnergyNet/energynet.pth'  # Path to the energy model
     SCALE_MODEL_PATH='results/ckpts/ScaleNet/scalenet.pth'     # Path to the scale model
-    PREV_POSE = None                                           # Previous pose
     SAM2_PATH = './segment-anything-2-real-time/checkpoints/sam2.1_hiera_tiny.pt'  # Path to the sam2 model checkpoint you have downloaded
     ######################################## PARAMETERS ########################################
 
@@ -325,8 +325,15 @@ def main():
         os.makedirs(SAVE_CAM_PATH, exist_ok=True)
 
     cur_cnt = -1
+    PREV_POSE = None
 
     if USE_CAM:
+        print("Using camera flow ")
+        print("press 's' to select some point on the some new target object")
+        print("press 'n' to select points on the next object")
+        print("press 'q' to start tracking")
+        print("press 'c' to stop tracking")
+        input("Press Enter to continue...")
         cv2.namedWindow('rgb')
         cam_serial_num = CAM_SERIAL_NUM
         robot_cam_num = int(cam_serial_num[0])
@@ -334,32 +341,76 @@ def main():
         mode = 'rgbd'
         rs_streamer = RealSenseRobotStream(cam_serial_num, robot_cam_num, rotation_angle, mode ,use_sam=True, sam2_path=SAM2_PATH)
         streamer = rs_streamer.stream(test=True, show_mask=False, save_path=SAVE_CAM_PATH if SAVE_CAM else None)
-        for index, (image, depth, mask, meta) in enumerate(tqdm(streamer)):
+        obj_idxl = None
+        # import time
+        # las_time = time.time()
+        for index, (image, depth, masks, meta, obj_ids) in enumerate(tqdm(streamer)):
             # continue
-            cur_cnt = index
-            depth = depth / 1000.0
-            mask = mask[0]
-            mask = (1-mask.cpu().numpy().astype(np.float32))
-            if len(depth.shape) == 3:
-                depth = depth[:, :, 0]
-            if len(mask.shape) == 3:
-                mask = mask[:, :, 2]
-            mask *= 255
-            data = InferDataset({
-                'color': image,
-                'depth': depth,
-                'mask': mask,
-                'meta': meta
-            },img_size=GenPose2.cfg.img_size, device=GenPose2.cfg.device, n_pts=GenPose2.cfg.num_points)
+            # print(f"get image and mask: {time.time()-las_time:.6f} seconds")
+            # las_time = time.time()
 
-            if PREV_POSE and data.get_objects()['idx'].cpu().numpy().shape[0] != len(PREV_POSE[0]):
-                PREV_POSE = None
+            if rs_streamer.if_init:
+                cur_cnt = index
+                # print(depth.shape)
+                depth = depth / 1000.0
 
-            # print(PREV_POSE)
-            pose, length = GenPose2.inference(data, PREV_POSE, PREV_POSE and TRACKING, TRACKING_T0)
-            data.color = cv2.cvtColor(data.color, cv2.COLOR_RGB2BGR)
-            color_image_w_pose = visualize_pose(data, pose, length, visualize_image=False)
-            PREV_POSE = pose
+                # print(masks.shape)
+                mask = torch.zeros((1, 360, 640), dtype=torch.int32)
+                for i in range(masks.shape[0]):
+                    mask[0][masks[i]] = i+1
+
+                # print(f"data calc1:{ time.time()-las_time:.6f} seconds")
+                # las_time = time.time()
+
+                data = InferDataset({
+                    'color': image,
+                    'depth': depth,
+                    'mask': mask[0].cpu().numpy(),
+                    'masks': masks,
+                    'meta': meta,
+                    'obj_ids': obj_ids
+                },img_size=GenPose2.cfg.img_size, device=GenPose2.cfg.device, n_pts=GenPose2.cfg.num_points)
+
+                # print(f"get dataset: {time.time()-las_time:.6f} seconds")
+                # las_time = time.time()
+
+                obj_idxx = data.get_objects(only_idx=True)['idx']
+
+                # print(f"get objects: {time.time()-las_time:.6f} seconds")
+                # las_time = time.time()
+                # print(obj_idxx, obj_idxl)
+                if obj_idxx.shape[0]:
+                    if (PREV_POSE and (obj_idxx.shape != obj_idxl.shape or (obj_idxx!=obj_idxl).any())):
+                        PREV_POSE = None
+                    obj_idxl = obj_idxx
+
+                    pose, length = GenPose2.inference(data, PREV_POSE, PREV_POSE and TRACKING, TRACKING_T0)
+
+                    # print(f"inference: {time.time()-las_time:.6f} seconds")
+                    # las_time = time.time()
+                    # print(data.color.shape)
+                    
+                    yellow = np.full_like(data.color, (255, 255, 0), dtype=np.uint8)
+
+                    # print(mask.shape)
+                    mask = torch.any(masks, dim=0).cpu().numpy().astype(np.uint8)
+                    # print(type(mask))
+                    mask_3c = cv2.merge([mask, mask, mask])
+                    alpha = 0.5
+                    overlay = cv2.addWeighted(data.color, 1.0, yellow, alpha, 0, dtype=cv2.CV_8U)
+                    data.color = np.where(mask_3c, overlay, data.color)
+                    # print(data.color.shape)
+
+                    # data.color = cv2.cvtColor(data.color, cv2.COLOR_RGB2BGR)
+                    color_image_w_pose = visualize_pose(data, pose, length, visualize_image=False)
+                    PREV_POSE = pose
+                else:
+                    color_image_w_pose = image
+                    PREV_POSE = None
+                    obj_idxl = obj_idxx
+            else:
+                color_image_w_pose = image
+
             cv2.imshow('rgb', color_image_w_pose)
             if SAVE_INFERED:
                 cv2.imwrite(os.path.join(SAVE_IMG_PATH, f"infer_{index:04d}.png"), color_image_w_pose)
@@ -368,36 +419,59 @@ def main():
                 break
             elif key == ord('s'):             # press 's' to select a new target object
                 rs_streamer.reset_mask_selection()
-            # continue
+
+            # print(f"show image: {time.time()-las_time:.6f} seconds")
+            # las_time = time.time()
 
         cv2.destroyAllWindows()    
 
     else:
         color_images = sorted(glob.glob(DATA_PATH + '/*_color.png'))
         os.makedirs(SAVE_IMG_PATH, exist_ok=True)
-
+        
+        obj_idxl = None
         for index, color_image in enumerate(tqdm(color_images)):
             cur_cnt = index
             data_prefix = color_image.replace('color.png', '')
             data = InferDataset.alternetive_init(data_prefix, img_size=GenPose2.cfg.img_size, device=GenPose2.cfg.device, n_pts=GenPose2.cfg.num_points)
             
-            # print(data.get_objects()['idx'].cpu().numpy().shape[0])
-            # if PREV_POSE:
-            #     print(len(PREV_POSE[0]))
-            if PREV_POSE and data.get_objects()['idx'].cpu().numpy().shape[0] != len(PREV_POSE[0]):
-                PREV_POSE = None
-            # print(PREV_POSE)
+            obj_idxx = data.get_objects(only_idx=True)['idx']
+            if obj_idxx.shape[0]:
+                if (PREV_POSE and ((obj_idxx.shape != obj_idxl.shape) or (obj_idxx!=obj_idxl).any())):
+                    PREV_POSE = None
+                obj_idxl = obj_idxx
 
-            pose, length = GenPose2.inference(data, PREV_POSE, PREV_POSE and TRACKING, TRACKING_T0)
-            color_image_w_pose = visualize_pose(data, pose, length, visualize_image=False)
-            PREV_POSE = pose
+                pose, length = GenPose2.inference(data, PREV_POSE, PREV_POSE and TRACKING, TRACKING_T0)
+
+                yellow = np.full_like(data.color, (255, 255, 0), dtype=np.uint8)
+                mask = (data.mask > 0).astype(np.uint8)
+                # print(type(mask))
+                mask_3c = cv2.merge([mask, mask, mask])
+                alpha = 0.5
+                overlay = cv2.addWeighted(data.color, 1.0, yellow, alpha, 0, dtype=cv2.CV_8U)
+                data.color = np.where(mask_3c, overlay, data.color)
+                color_image_w_pose = visualize_pose(data, pose, length, visualize_image=False)
+                PREV_POSE = pose
+            else:
+                color_image_w_pose = data.color
+                PREV_POSE = None
+                obj_idxl = obj_idxx
+            color_image_w_pose = cv2.cvtColor(color_image_w_pose, cv2.COLOR_RGB2BGR)
+            cv2.imshow('rgb', color_image_w_pose)
+            if SAVE_INFERED:
+                cv2.imwrite(os.path.join(SAVE_IMG_PATH, f"infer_{index:04d}.png"), color_image_w_pose)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('c'):               # press 'c' to stop tracking
+                break
+            elif key == ord('s'):             # press 's' to select a new target object
+                rs_streamer.reset_mask_selection()
             if SAVE_INFERED:
                 cv2.imwrite(os.path.join(SAVE_IMG_PATH, f"infer_{index:04d}.png"), color_image_w_pose)
 
     # img names "infer_{index:04d}.png" and only use 0~{cur_cnt}
     img_paths = sorted(glob.glob(os.path.join(SAVE_IMG_PATH, '*.png')))
     img_paths = img_paths[:cur_cnt + 1]
-    print(img_paths)
+    # print(img_paths)
     frames = [imageio.imread(p) for p in img_paths]
     save_mp4_path = os.path.join(SAVE_VD_PATH, 'output.mp4')
     if not os.path.exists(os.path.dirname(save_mp4_path)):

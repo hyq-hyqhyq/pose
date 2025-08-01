@@ -171,6 +171,7 @@ class RealSenseRobotStream(object):
         self.use_sam = use_sam
         self.reset_mask = None
         self.sam2_path = sam2_path
+        self.if_init = False
 
         # Initializing ROS Node
 
@@ -184,12 +185,12 @@ class RealSenseRobotStream(object):
         self._start_realsense(PROCESSING_PRESET) 
 
         # Initialize SAM
-        if use_sam:
-            sam2_checkpoint = self.sam2_path or "./segment-anything-2-real-time/checkpoints/sam2.1_hiera_tiny.pt"
-            model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
-            device = 'cuda'
-            self.predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint, device=device)
-            self.if_init = False
+        # if use_sam:
+        #     sam2_checkpoint = self.sam2_path or "./segment-anything-2-real-time/checkpoints/sam2.1_hiera_tiny.pt"
+        #     model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
+        #     device = 'cuda'
+        #     self.predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint, device=device)
+        #     self.if_init = False
 
             
         print(f"Started the Realsense pipeline for camera: {self.cam_serial_num}!")
@@ -235,10 +236,11 @@ class RealSenseRobotStream(object):
         self.distortion_coefficients = np.array(intrinsics.coeffs) # k1, k2, p1, p2, k3
 
         # Align function - aligns other frames with the color frame
-        if self.cam_serial_num in ["251622062545"]: # D415
-            self.align = rs.align(rs.stream.color)
-        elif self.cam_serial_num == "230322275548":
-            self.align = rs.align(rs.stream.color)
+        self.align = rs.align(rs.stream.color)
+        # if self.cam_serial_num in ["251622062545"]: # D415
+        #     self.align = rs.align(rs.stream.color)
+        # elif self.cam_serial_num == "230322275548":
+        #     self.align = rs.align(rs.stream.color)
 
         if self.cam_serial_num in ["251622062545"]: # D415
             sensor = profile.get_device().query_sensors()[1]
@@ -247,6 +249,10 @@ class RealSenseRobotStream(object):
         elif self.cam_serial_num == "230322275548":
             sensor = profile.get_device().query_sensors()[0]
             print(sensor.get_option(rs.option.exposure)) 
+        else:
+            sensor = profile.get_device().query_sensors()[1]
+            sensor.set_option(rs.option.auto_exposure_priority, True)
+            print(sensor.get_option(rs.option.exposure))
     
     def reset_mask_selection(self):
         """Prepare the tracker for a brand‑new object selection."""
@@ -262,6 +268,11 @@ class RealSenseRobotStream(object):
                 model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
                 device = 'cuda'
                 self.predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint, device=device)
+        else:
+            sam2_checkpoint = self.sam2_path or "./segment-anything-2-real-time/checkpoints/sam2.1_hiera_tiny.pt"
+            model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
+            device = 'cuda'
+            self.predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint, device=device)
                 
 
     def get_rgb_depth_images(self):
@@ -282,8 +293,10 @@ class RealSenseRobotStream(object):
                     depth_image = (
                         np.asanyarray(aligned_depth_frame.get_data()) // 4
                     )  # L515 camera need to divide by 4 to get metric in meter   
-                elif self.cam_serial_num in ["211222065122", "230322275548", "211222065122", "332122060334", "251622062545"]:
-                    depth_image = np.asanyarray(aligned_depth_frame.get_data()) 
+                elif self.cam_serial_num in ["251622062545"]:
+                    depth_image = np.asanyarray(aligned_depth_frame.get_data())
+                else:
+                    depth_image = np.asanyarray(aligned_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
             if self.mode == 'rgbd':
@@ -309,11 +322,10 @@ class RealSenseRobotStream(object):
                 color_image = self.get_rgb_depth_images()
                 color_image = rotate_image(color_image, self.rotation_angle)
                 # color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
-
-            mask, obj_id = self.get_mask(color_image)
+            masks, obj_id = self.get_mask(color_image)
             # binary_mask = convert_mask_for_ros(mask)
             if show_mask:
-                show_mask_and_video(mask, color_image, obj_id=obj_id)
+                show_mask_and_video(masks[0], color_image, obj_id=obj_id)
                 # show_mask_and_video_binary(binary_mask)
 
             intr = self.intrinsics_matrix
@@ -331,19 +343,30 @@ class RealSenseRobotStream(object):
                 }
             }
 
-            t4 = time.time()
+            masks = torch.as_tensor(masks[:,0,:,:], dtype=torch.bool)
+            # print(masks.shape)
+            # mask = torch.zeros(1, 360, 640, dtype=torch.int32)
+            # for i in range(masks.shape[0]):
+            #     mask[0][masks[i, 0]] = i+1
+
             if save_path:
                 cv2.imwrite(os.path.join(save_path, f"{count:04d}_color.png"), color_image)
                 depth_save_image = depth_image / 1000.0
                 save_exr(os.path.join(save_path, f"{count:04d}_depth.exr"), depth_save_image)
-                mask_image = mask[0]
-                mask_image = (1-mask_image.cpu().numpy().astype(np.float32))
+                mask_image = torch.zeros(1, 360, 640, dtype=torch.float32)
+                for i in range(masks.shape[0]):
+                    mask_image[0][masks[i]] = i+1
+                # mask_image = masks
+                mask_image = (mask_image[0] / torch.max(mask_image[0]) * 255).cpu().numpy().astype(np.uint8)
+                # mask_image = mask_image.cpu().numpy().astype(np.float32)
                 save_exr(os.path.join(save_path, f"{count:04d}_mask.exr"), mask_image)
                 with open(os.path.join(save_path, f"{count:04d}_meta.json"), 'w') as f:
                     json.dump(meta, f, indent=4)
-                mask_image_png = mask_image * 255
+                mask_image_png = mask_image / mask_image.max() * 255
                 cv2.imwrite(os.path.join(save_path, f"{count:04d}_mask.png"), mask_image_png)
                 count += 1
+                
+            t4 = time.time()
 
             # self.rate.sleep()
             cprint(f"get rgbd freq: {1 / (t2-t1)}", "blue")
@@ -359,9 +382,8 @@ class RealSenseRobotStream(object):
 
             # if count == 130:
             #     break
-
             if test:
-                yield color_image, depth_image, mask, meta
+                yield color_image, depth_image, masks, meta, obj_id
         
     
     def colorize_depth(self, depth_image, min_depth=0, max_depth=3000):
@@ -492,8 +514,7 @@ class RealSenseRobotStream(object):
         
         
         # Segmentation logic
-        ann_frame_idx = 0  # The frame index we interact with
-        ann_obj_id = 0
+        
         # if not hasattr(get_mask, "if_init"):
         #     predictor.load_first_frame(color_image)
         #     get_mask.if_init = True
@@ -505,42 +526,64 @@ class RealSenseRobotStream(object):
         #     )
         # else:
         #     out_obj_ids, out_mask_logits = predictor.track(color_image)
+        if not hasattr(self, "predictor"):
+            mask = np.zeros((1, 1, HEIGHT, WIDTH))
+            # print(mask)
+            mask = torch.as_tensor(mask, dtype=torch.bool)
+            obj_id = []
+            # print(mask.shape, obj_id)
+            return mask, obj_id
 
         if not self.if_init:
-            selected_points = []
-
-            def click_event(event, x, y, flags, param):
-                if event == cv2.EVENT_LBUTTONDOWN:
-                    selected_points.append([x, y])
-                    cv2.circle(param, (x, y), 5, (0, 255, 0), -1)
-                    cv2.imshow("Select Points", param)
+            self.predictor.load_first_frame(color_image)
 
             # Show image and let user select points
-            image_copy = color_image.copy()
-            cv2.imshow("Select Points", image_copy)
-            cv2.setMouseCallback("Select Points", click_event, image_copy)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            ann_frame_idx = 0  # The frame index we interact with
+            ann_obj_id = 0
+            while True:
+                selected_points = []
+                def click_event(event, x, y, flags, param):
+                    if event == cv2.EVENT_LBUTTONDOWN:
+                        selected_points.append([x, y])
+                        cv2.circle(param, (x, y), 5, (0, 255, 0), -1)
+                        cv2.imshow("Select Points", param)
 
-            points = np.array(selected_points, dtype=np.float32)
+                image_copy = color_image.copy()
+                cv2.imshow("Select Points", image_copy)
+                cv2.setMouseCallback("Select Points", click_event, image_copy)
+                p = cv2.waitKey(0)
+                cv2.destroyAllWindows()
 
+                points = np.array(selected_points, dtype=np.float32)
+                if points.size == 0:
+                    continue
+                ann_obj_id += 1
 
-            self.predictor.load_first_frame(color_image)
+                # _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(ann_frame_idx, ann_obj_id, points)
+                _, out_obj_ids, out_mask_logits = self.predictor.add_new_points(
+                    frame_idx=ann_frame_idx,
+                    obj_id=ann_obj_id,
+                    points=points,
+                    labels=np.array([1] * points.shape[0], dtype=np.int32),
+                )
+
+                if p == ord('q'):
+                    break
+
             self.if_init = True
-            # _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(ann_frame_idx, ann_obj_id, points)
-            _, out_obj_ids, out_mask_logits = self.predictor.add_new_points(
-                frame_idx=ann_frame_idx,
-                obj_id=ann_obj_id,
-                points=points,
-                labels=np.array([1] * len(points), np.int32),
-            )
         else:
             out_obj_ids, out_mask_logits = self.predictor.track(color_image)
 
-        obj_id = out_obj_ids[0]
-        mask = (out_mask_logits[0] > 0.0)
+        # obj_id = out_obj_ids[0]
+        # mask = (out_mask_logits[0] > 0.0)
+        obj_id = out_obj_ids
+        masks = (out_mask_logits > 0.0)
+        # print(np.unique(mask.cpu().numpy()))
+        # print(mask.shape)
+        # print(mask)
+        # print(obj_id)
 
-        return mask, obj_id
+        return masks, obj_id
 
 
 

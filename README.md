@@ -13,6 +13,7 @@ The official implementation of GenPose++, as presented in [Omni6DPose](https://j
 
 
 ## ✨ News
+* **2025.08.01**: **a convenient version of GenPose++ with SAM** is released! 🎉
 * **2024.08.10**: **GenPose++** is released! 🎉
 * **2024.08.01**: **<span style="color: #9AEA27;">Omni6DPose</span>** [dataset](https://github.com/Omni6DPose/Omni6DPoseAPI) and [API](https://github.com/Omni6DPose/Omni6DPoseAPI) are released! 🎉
 * **2024.07.01**: **<span style="color: #9AEA27;">Omni6DPose</span>** has been accepted by ECCV2024! 🎉
@@ -160,34 +161,16 @@ Fill the PARAMETERS part in runners/infer_camera.py
 
 In the PARAMETERS part, you can turn the USE_CAM to change using camera flow or video, choose whether to save the camera flow or the infered video. 
 
-If you want to infer the video, you have to provide a folder at least as the following format.(DATA_PATH is the video you provide). The color image file ends with '_color.png', depth image file end with '_depth.exr', mask image file ends woth '_mask.exr', and a meta file storing the intrinsics of camera ends with '_meta.json' as the follow format.
+If you want to infer the video, you have to provide a folder at least as the following format.(DATA_PATH is the video you provide, and the '_mask.png' is not necessary, it is used to visualize the mask).
 
 ``` bash
 DATA_PATH
-├── 0000_color.png
-├── 0000_depth.exr
-├── 0000_mask.exr
-├── 0000_meta.json
-├── 0001_color.png
-├── 0001_depth.exr
-├── 0001_mask.exr
-├── 0001_meta.json
-└── ...
-
-_meta.json
-  {
-    "camera": {
-      "intrinsics": {
-        "fx": 910.8401489257812,
-        "fy": 909.480712890625,
-        "cx": 626.82568359375,
-        "cy": 348.2036437988281,
-        "width": 1280,
-        "height": 720
-      }
-    }
-  }
+├── *_color.png
+├── *_depth.exr
+├── *_mask.exr
+└── *_meta.json
 ```
+You can also download the example data we provided [here]()
 
 The TRACKING parameter is used to determine whether use tracking, which means use the pose in last frame as the initial pose. The TRACKING_T0 parameter is to choose the tracking level. there are also some to choose the path of saving.
 
