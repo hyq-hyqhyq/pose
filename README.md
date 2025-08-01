@@ -13,7 +13,7 @@ The official implementation of GenPose++, as presented in [Omni6DPose](https://j
 
 
 ## ✨ News
-* **2025.08.01**: **a convenient version of GenPose++ with SAM** is released! 🎉
+* **2025.08.01**: **A convenient version of GenPose++ with SAM** is released! 🎉
 * **2024.08.10**: **GenPose++** is released! 🎉
 * **2024.08.01**: **<span style="color: #9AEA27;">Omni6DPose</span>** [dataset](https://github.com/Omni6DPose/Omni6DPoseAPI) and [API](https://github.com/Omni6DPose/Omni6DPoseAPI) are released! 🎉
 * **2024.07.01**: **<span style="color: #9AEA27;">Omni6DPose</span>** has been accepted by ECCV2024! 🎉
@@ -157,9 +157,9 @@ First you have to download [this](https://github.com/Gy920/segment-anything-2-re
 pip install -r requirements_camera.txt
 ```
 
-Fill the PARAMETERS part in runners/infer_camera.py
+Fill the PARAMETERS part in runners/infer_camera.py.
 
-In the PARAMETERS part, you can turn the USE_CAM to change using camera flow or video, choose whether to save the camera flow or the infered video. 
+In the PARAMETERS part, you can turn the USE_CAM to change using camera flow or video, choose whether to save the camera flow or the infered video. We use D415 as default camera, fill your camera's serial number as the CAM_SERIAL_NUM in PARAMETERS part.
 
 If you want to infer the video, you have to provide a folder at least as the following format.(DATA_PATH is the video you provide, and the '_mask.png' is not necessary, it is used to visualize the mask).
 
