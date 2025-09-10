@@ -1,3 +1,13 @@
+# 使用
+
+```bash
+python runners/infer_local_frame.py
+```
+DATA_PATH = 'output' 这个会用来存放中间产物（两个exr一张图片一个json）
+修改 MESH_IN  = 'object3.obj'
+    MESH_OUT = 'mesh_pose_normalized.obj'即可
+
+
 # GenPose++
 [![Website](https://img.shields.io/badge/Website-orange.svg )](https://jiyao06.github.io/Omni6DPose/)
 [![Arxiv](https://img.shields.io/badge/Arxiv-green.svg )](https://arxiv.org/pdf/2406.04316.pdf)
