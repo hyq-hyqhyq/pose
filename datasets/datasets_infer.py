@@ -64,6 +64,7 @@ class InferDataset(object):
             assert False, f"Object {obj_idx} not found in mask"
         max_depth = 4.0
         self._depth[self._depth > max_depth] = 0
+        print(np.max(self._depth), np.min(self._depth), np.mean(self._depth), np.sum(self._depth))
         if not (self._mask.shape[:2] == self._depth.shape[:2] == self._color.shape[:2]):
             assert False, "depth, mask, and rgb should have the same shape"
         intrinsics = self._meta.camera.intrinsics
@@ -111,9 +112,9 @@ class InferDataset(object):
         roi_depth = crop_resize_by_warp_affine(
             self._depth, bbox_center, scale, self._img_size, interpolation=cv2.INTER_NEAREST
         )
-
         roi_depth = np.expand_dims(roi_depth, axis=0)
         depth_valid = roi_depth > 0
+        print(np.max(depth_valid), np.min(depth_valid), np.mean(depth_valid), np.sum(depth_valid))
         if np.sum(depth_valid) <= 1.0:
             from ipdb import set_trace; set_trace()
             assert False, "No valid depth values"

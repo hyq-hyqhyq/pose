@@ -12,9 +12,9 @@
 int group_points_grad_wrapper_fast(int b, int c, int n, int npoints, int nsample, 
     at::Tensor grad_out_tensor, at::Tensor idx_tensor, at::Tensor grad_points_tensor) {
 
-    float *grad_points = grad_points_tensor.data<float>();
-    const int *idx = idx_tensor.data<int>();
-    const float *grad_out = grad_out_tensor.data<float>();
+    float *grad_points = grad_points_tensor.data_ptr<float>();
+    const int *idx = idx_tensor.data_ptr<int>();
+    const float *grad_out = grad_out_tensor.data_ptr<float>();
 
     // cudaStream_t stream = at::cuda::getCurrentCUDAStream();
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
@@ -26,9 +26,9 @@ int group_points_grad_wrapper_fast(int b, int c, int n, int npoints, int nsample
 int group_points_wrapper_fast(int b, int c, int n, int npoints, int nsample, 
     at::Tensor points_tensor, at::Tensor idx_tensor, at::Tensor out_tensor) {
 
-    const float *points = points_tensor.data<float>();
-    const int *idx = idx_tensor.data<int>();
-    float *out = out_tensor.data<float>();
+    const float *points = points_tensor.data_ptr<float>();
+    const int *idx = idx_tensor.data_ptr<int>();
+    float *out = out_tensor.data_ptr<float>();
 
     // cudaStream_t stream = at::cuda::getCurrentCUDAStream();
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
